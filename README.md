@@ -67,7 +67,7 @@ Formato del archivo:
 ```
 bolsillo-apk/
   www/index.html              La app completa (HTML, CSS y JS)
-  assets/icon-only.png        Ícono base de 1024x1024
+  assets/                     Ícono (icon-only, icon-foreground, icon-background) y pantalla de carga (splash, splash-dark)
   capacitor.config.json       Nombre y id de la app
   package.json                Dependencias y scripts
   .github/workflows/
@@ -113,7 +113,7 @@ Edita `www/index.html`, corre `npm run sync` y vuelve a compilar.
 
 ## Personalizar
 
-- **Ícono:** reemplaza `assets/icon-only.png` por un PNG cuadrado de 1024x1024 y corre `npx capacitor-assets generate --android`. Deja el dibujo centrado y con márgenes, porque Android recorta las esquinas.
+- **Ícono y pantalla de carga:** los archivos están en `assets/`. `icon-foreground.png` (dibujo con fondo transparente) e `icon-background.png` (fondo liso) forman el ícono adaptativo que usa Android moderno, y `icon-only.png` es el ícono clásico. Todos son PNG de 1024x1024, y los `splash` de 2732x2732. Reemplázalos y corre `npx capacitor-assets generate --android`. Si falta `icon-foreground` o `icon-background`, Android puede mostrar el ícono por defecto de Capacitor.
 - **Nombre e id:** edita `appName` y `appId` en `capacitor.config.json` antes de correr `npm run setup`.
 - **Categorías de gasto:** busca la constante `CATS` en `www/index.html`.
 

@@ -92,6 +92,11 @@ textarea:focus{border-color:var(--ink)}
 #app{position:relative}
 .gear{position:absolute;top:20px;right:14px;background:none;border:0;padding:8px;color:var(--mute);line-height:0;cursor:pointer}
 .sh{max-height:92vh;overflow-y:auto}
+.gh{display:flex;align-items:center;gap:4px;margin-bottom:4px}
+.gh h2{margin:0}
+.pen{background:none;border:0;padding:8px;color:var(--mute);cursor:pointer;line-height:0}
+body{overflow-x:hidden}
+.na *,.na *::before,.na *::after{transition:none!important;animation:none!important}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -103,9 +108,9 @@ textarea:focus{border-color:var(--ink)}
 <script>
 const $=s=>document.querySelector(s);
 const CATS=['Comida','Transporte','Casa','Ocio','Otros'];
-let S={goals:[],exp:[],inc:[],tab:'resumen',cat:'Comida',mode:'gasto',date:'',adj:0,plan:{},wk:'',bk:0,theme:''};
-try{const r=localStorage.getItem('bolsillo');if(r){const d=JSON.parse(r);S.goals=d.goals||[];S.exp=d.exp||[];S.inc=d.inc||[];S.adj=d.adj||0;S.plan=d.plan||{};S.bk=d.bk||0;S.theme=d.theme||''}}catch(e){}
-const save=()=>{try{localStorage.setItem('bolsillo',JSON.stringify({goals:S.goals,exp:S.exp,inc:S.inc,adj:S.adj,plan:S.plan,bk:S.bk,theme:S.theme}))}catch(e){}};
+let S={goals:[],exp:[],inc:[],tab:'resumen',cat:'Comida',mode:'gasto',date:'',adj:0,plan:{},wk:'',bk:0,theme:'',noanim:false};
+try{const r=localStorage.getItem('bolsillo');if(r){const d=JSON.parse(r);S.goals=d.goals||[];S.exp=d.exp||[];S.inc=d.inc||[];S.adj=d.adj||0;S.plan=d.plan||{};S.bk=d.bk||0;S.theme=d.theme||'';S.noanim=!!d.noanim}}catch(e){}
+const save=()=>{try{localStorage.setItem('bolsillo',JSON.stringify({goals:S.goals,exp:S.exp,inc:S.inc,adj:S.adj,plan:S.plan,bk:S.bk,theme:S.theme,noanim:S.noanim}))}catch(e){}};
 const fmt=n=>(n<0?'-':'')+'$'+Math.abs(Math.round(n)).toLocaleString('es-CO');
 const iso=d=>{const x=new Date(d);return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0')};
 const tsOf=k=>{const [y,m,d]=k.split('-').map(Number),n=new Date();return new Date(y,m-1,d,n.getHours(),n.getMinutes()).getTime()};
@@ -183,15 +188,21 @@ function plan(){
   <div class="wk"><button class="x" data-act="wk" data-n="-7" aria-label="Semana anterior">‹</button><span>Semana</span><button class="x" data-act="wk" data-n="7" aria-label="Semana siguiente">›</button></div>
   <div class="pr ph"><span></span><span>Recibo</span><span>Gasto</span><span>Queda</span><span>Saldo</span></div>`;
   h+=ds.map(k=>{const past=k<T,i=past?act(S.inc,k):P(k).i||0,g=past?act(S.exp,k):P(k).g||0,d=dt(k);
-    return `<div class="pr${past?' pa':''}${k===T?' td':''}" data-act="pday" data-k="${k}"><span>${d.toLocaleDateString('es-CO',{weekday:'short'}).replace('.','')} ${d.getDate()}</span><span>${cf(i)}</span><span>${cf(g)}</span><span>${cf(i-g)}</span><span>${k in sal?cf(sal[k]):'–'}</span></div>`}).join('');
+    return `<div class="pr${past?' pa':''}${k===T?' td':''}" data-act="pday" data-k="${k}"><span>${d.toLocaleDateString('es-CO',{weekday:'short'}).replace('.','')} ${d.getDate()}</span><span data-f="i">${cf(i)}</span><span data-f="g">${cf(g)}</span><span>${cf(i-g)}</span><span>${k in sal?cf(sal[k]):'–'}</span></div>`}).join('');
   h+=`<p class="meta" style="margin-top:10px">Toca un día para editarlo. Los días que ya pasaron muestran lo real.</p>
   <div class="stats" style="margin-top:22px"><div><span>Tengo hoy</span><b>${fmt(avail())}</b></div><div><span>Recibiré</span><b>${fmt(ri)}</b></div><div><span>Gastaré</span><b>${fmt(rg)}</b></div></div>
-  <button class="btn" data-act="fill">Llenar la semana</button><label style="margin-top:22px">Ir a otra fecha</label><input type="date" id="pw" value="${S.wk}">`;
+  <div class="two"><button class="btn" data-act="fill">Llenar la semana</button><button class="btn ghost" data-act="clrplan">Limpiar</button></div><label style="margin-top:22px">Ir a otra fecha</label><input type="date" id="pw" value="${S.wk}">`;
   return h;
 }
-function pdaySheet(k){
+function pdaySheet(k,f){
   const p=S.plan[k]||{},d=dt(k);
-  sheet(`<h2 style="text-transform:capitalize">${d.toLocaleDateString('es-CO',{weekday:'long',day:'numeric',month:'long'})}</h2><label>Voy a recibir</label><input class="money" id="pi" inputmode="numeric" placeholder="$0" value="${p.i?p.i.toLocaleString('es-CO'):''}"><label>Presupuesto para gastar</label><input class="money" id="pg" inputmode="numeric" placeholder="$0" value="${p.g?p.g.toLocaleString('es-CO'):''}"><button class="btn" data-act="savepday" data-k="${k}">Guardar</button>`);
+  sheet(`<h2 style="text-transform:capitalize">${d.toLocaleDateString('es-CO',{weekday:'long',day:'numeric',month:'long'})}</h2><label>Voy a recibir</label><input class="money" id="pi" inputmode="numeric" placeholder="$0" value="${p.i?p.i.toLocaleString('es-CO'):''}"><label>Presupuesto para gastar</label><input class="money" id="pg" inputmode="numeric" placeholder="$0" value="${p.g?p.g.toLocaleString('es-CO'):''}"><button class="btn" data-act="savepday" data-k="${k}">Guardar</button>`,1);
+  setTimeout(()=>$(f==='g'?'#pg':'#pi').focus(),60);
+}
+function clrSheet(){
+  const T=iso(Date.now()),ks=[...Array(7)].map((_,i)=>addD(S.wk,i)).filter(k=>k>=T&&S.plan[k]);
+  if(!ks.length){sheet(`<h2>Limpiar plan</h2><p class="meta">No hay montos planeados para borrar en esta semana. Los días que ya pasaron no se tocan.</p><button class="btn" data-act="close">Entendido</button>`,1);return}
+  sheet(`<h2>Limpiar plan</h2><p class="meta">Se borran los montos planeados de ${ks.length} ${ks.length>1?'días':'día'} (desde hoy en adelante). Los días que ya pasaron se quedan igual.</p><button class="btn" data-act="doclr">Limpiar</button><button class="lnk" data-act="close">Cancelar</button>`,1);
 }
 function fillSheet(){
   sheet(`<h2>Llenar la semana</h2><p class="meta">Se aplica a los 7 días. Después cambias uno por uno si quieres.</p><label>Voy a recibir cada día</label><input class="money" id="fi" inputmode="numeric" placeholder="$0"><label>Presupuesto de gasto cada día</label><input class="money" id="fg" inputmode="numeric" placeholder="$0"><button class="btn" data-act="savefill">Aplicar</button>`);
@@ -237,13 +248,28 @@ const applyTheme=()=>{if(S.theme)document.documentElement.dataset.theme=S.theme}
 function cfgSheet(){
   const dk=(document.documentElement.dataset.theme||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'))==='dark';
   sheet(`<h2>Configuración</h2><label>Apariencia</label><div class="seg" style="margin-top:6px"><button class="${dk?'':'on'}" data-act="theme" data-m="light">Claro</button><button class="${dk?'on':''}" data-act="theme" data-m="dark">Oscuro</button></div>
+  <label class="ck"><input type="checkbox" data-act="anim" ${S.noanim?'':'checked'}><i></i>Animaciones</label>
   <label>Disponible</label><p class="meta" style="margin:6px 0 0">Ahora la app dice ${fmt(avail())}. Escribe cuánto tienes de verdad, sin contar lo de tus metas.</p><input class="money" id="ad" inputmode="numeric" placeholder="$0"><button class="btn ghost" data-act="saveadj" style="margin-top:12px">Actualizar disponible</button>
   <label>Copia de seguridad</label><div class="two"><button class="btn" data-act="bk" style="margin-top:8px">Guardar</button><button class="btn ghost" data-act="rs" style="margin-top:8px">Restaurar</button></div>`,1);
 }
 
+const ORD=['resumen','plan','gastos','metas'];
+const applyAnim=()=>document.documentElement.classList.toggle('na',!!S.noanim);
+let busy=0;
+function go(tab){
+  if(tab===S.tab||busy)return;
+  const dir=ORD.indexOf(tab)>ORD.indexOf(S.tab)?1:-1,vw=$('#vw');
+  const swap=()=>{S.tab=tab;render();scrollTo(0,0)};
+  if(S.noanim||!vw||!vw.animate||matchMedia('(prefers-reduced-motion: reduce)').matches)return swap();
+  busy=1;setTimeout(()=>{busy=0},700);
+  vw.animate([{opacity:1,transform:'none',filter:'blur(0px)'},{opacity:0,transform:`translateX(${-dir*30}px)`,filter:'blur(10px)'}],{duration:150,easing:'ease-in',fill:'forwards'}).onfinish=()=>{
+    swap();
+    $('#vw').animate([{opacity:0,transform:`translateX(${dir*40}px)`,filter:'blur(14px)'},{opacity:1,transform:'none',filter:'blur(0px)'}],{duration:320,easing:'cubic-bezier(.2,.8,.2,1)'}).onfinish=()=>{busy=0};
+  };
+}
 function render(){
   document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.tab===S.tab));
-  $('#app').innerHTML=GEAR+({resumen:dash,plan,gastos,metas})[S.tab]();
+  $('#app').innerHTML=GEAR+'<div id="vw">'+({resumen:dash,plan,gastos,metas})[S.tab]()+'</div>';
 }
 function sheet(h,nf){const o=$('#ov');o.innerHTML=`<div class="sh">${h}</div>`;o.classList.add('open');const i=o.querySelector('input');if(i&&!nf)setTimeout(()=>i.focus(),60)}
 function closeSheet(){$('#ov').classList.remove('open')}
@@ -251,10 +277,14 @@ function closeSheet(){$('#ov').classList.remove('open')}
 function goalSheet(id){
   const g=S.goals.find(x=>x.id===id);if(!g)return;
   const left=Math.max(0,g.target-g.saved);
-  sheet(`<h2>${esc(g.name)}</h2><p class="meta">${fmt(g.saved)} de ${fmt(g.target)}. ${left?`Faltan ${fmt(left)}`:'Meta cumplida'}<br>Disponible: ${fmt(avail())}</p>
+  sheet(`<div class="gh"><h2>${esc(g.name)}</h2><button class="pen" data-act="editgoal" data-id="${id}" aria-label="Editar meta"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button></div><p class="meta">${fmt(g.saved)} de ${fmt(g.target)}. ${left?`Faltan ${fmt(left)}`:'Meta cumplida'}<br>Disponible: ${fmt(avail())}</p>
   <input class="money" id="amt" inputmode="numeric" placeholder="¿Cuánto?"><label class="ck"><input type="checkbox" id="nd"><i></i>Sin mover mi disponible</label>
   <div class="two"><button class="btn" data-act="add" data-id="${id}">Abonar</button><button class="btn ghost" data-act="take" data-id="${id}">Retirar</button></div>
   <button class="lnk" data-act="delgoal" data-id="${id}">Eliminar meta</button>`);
+}
+function editGoalSheet(id){
+  const g=S.goals.find(x=>x.id===id);if(!g)return;
+  sheet(`<h2>Editar meta</h2><label>Nombre</label><input id="gn" value="${esc(g.name)}" maxlength="40"><label>Cuánto necesitas</label><input class="money" id="gt" inputmode="numeric" value="${g.target.toLocaleString('es-CO')}"><button class="btn" data-act="saveedit" data-id="${id}">Guardar cambios</button><button class="lnk" data-act="goal" data-id="${id}">Cancelar</button>`);
 }
 function newGoalSheet(){
   sheet(`<h2>Nueva meta</h2><label>Nombre</label><input id="gn" placeholder="Ej: Viaje a Cartagena" maxlength="40">
@@ -265,10 +295,12 @@ function newGoalSheet(){
 
 document.addEventListener('click',e=>{
   const t=e.target.closest('[data-act],[data-tab]');if(!t)return;
-  if(t.dataset.tab){S.tab=t.dataset.tab;render();scrollTo(0,0);return}
+  if(t.dataset.tab){go(t.dataset.tab);return}
   const a=t.dataset.act,id=t.dataset.id;
   if(a==='goal')goalSheet(id);
   else if(a==='newgoal')newGoalSheet();
+  else if(a==='editgoal')editGoalSheet(id);
+  else if(a==='saveedit'){const g=S.goals.find(x=>x.id===id),n=$('#gn').value.trim(),tg=num($('#gt').value);$('#gn').classList.toggle('bad',!n);$('#gt').classList.toggle('bad',!tg);if(!g||!n||!tg)return;g.name=n;g.target=tg;save();render();goalSheet(id)}
   else if(a==='savegoal'){
     const n=$('#gn').value.trim(),tg=num($('#gt').value),s=num($('#gs').value);
     const ov=s>avail();$('#gn').classList.toggle('bad',!n);$('#gt').classList.toggle('bad',!tg);$('#gs').classList.toggle('bad',ov);
@@ -284,14 +316,17 @@ document.addEventListener('click',e=>{
   else if(a==='delgoal'){t.textContent='Toca otra vez para eliminar';t.dataset.act='delgoal2'}
   else if(a==='delgoal2'){S.goals=S.goals.filter(x=>x.id!==id);save();closeSheet();render()}
   else if(a==='cat'){S.cat=t.dataset.c;document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',c===t))}
-  else if(a==='pday')pdaySheet(t.dataset.k);
+  else if(a==='pday')pdaySheet(t.dataset.k,(e.target.closest('[data-f]')||{dataset:{}}).dataset.f);
   else if(a==='savepday'){const k=t.dataset.k;setP(k,'i',num($('#pi').value));setP(k,'g',num($('#pg').value));save();closeSheet();render()}
+  else if(a==='clrplan')clrSheet();
+  else if(a==='doclr'){const T=iso(Date.now());for(let n=0;n<7;n++){const k=addD(S.wk,n);if(k>=T)delete S.plan[k]}save();closeSheet();render()}
   else if(a==='fill')fillSheet();
   else if(a==='savefill'){const fi=$('#fi').value,fg=$('#fg').value;for(let n=0;n<7;n++){const k=addD(S.wk,n);if(fi!=='')setP(k,'i',num(fi));if(fg!=='')setP(k,'g',num(fg))}save();closeSheet();render()}
   else if(a==='wk'){S.wk=addD(S.wk,+t.dataset.n);render()}
   else if(a==='saveadj'){const el=$('#ad');if(el.value===''){el.classList.add('bad');return}S.adj+=num(el.value)-avail();save();closeSheet();render()}
   else if(a==='bar'){S.sel=S.sel===t.dataset.k?'':t.dataset.k;render()}
   else if(a==='close')closeSheet();
+  else if(a==='anim'){S.noanim=!t.checked;save();applyAnim()}
   else if(a==='cfg')cfgSheet();
   else if(a==='theme'){S.theme=t.dataset.m;applyTheme();save();cfgSheet()}
   else if(a==='bk')backup();
@@ -322,7 +357,10 @@ document.addEventListener('input',e=>{
 document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id==='en')document.querySelector('[data-act="addmov"]').click()});
 $('#rf').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>readBk(String(r.result));r.readAsText(f);e.target.value=''});
 document.addEventListener('change',e=>{if(e.target.id==='pw'&&e.target.value){S.wk=mon(e.target.value);render()}});
-applyTheme();
+const endCaret=el=>setTimeout(()=>{try{const l=el.value.length;el.setSelectionRange(l,l)}catch(x){}},0);
+document.addEventListener('focusin',e=>{if(e.target.matches('.money,#gn'))endCaret(e.target)});
+document.addEventListener('click',e=>{if(e.target.matches('.money'))endCaret(e.target)});
+applyTheme();applyAnim();
 render();
 </script>
 </body>

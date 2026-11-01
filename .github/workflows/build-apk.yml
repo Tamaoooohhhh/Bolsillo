@@ -17,9 +17,19 @@ jobs:
           java-version: 17
       - run: npm install
       - run: npx cap add android
+      - run: node scripts/patch-android.js
       - name: Generar iconos
         run: npx capacitor-assets generate --android
       - run: npx cap sync android
+      - name: Llave de firma
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > bolsillo.keystore
+          else
+            echo "::warning::Falta el secret KEYSTORE_BASE64. El APK saldra con una llave temporal y no podras actualizar encima."
+          fi
       - name: Compilar APK
         working-directory: android
         run: |

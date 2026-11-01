@@ -3,8 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "setup": "cap add android && capacitor-assets generate --android && cap sync android",
-    "sync": "cap sync android"
+    "setup": "cap add android && node scripts/patch-android.js && capacitor-assets generate --android && cap sync android",
+    "sync": "cap sync android",
+    "llave": "keytool -genkeypair -v -keystore bolsillo.keystore -alias bolsillo -keyalg RSA -keysize 2048 -validity 36500 -storepass bolsillo123 -keypass bolsillo123 -dname \"CN=Bolsillo\""
   },
   "dependencies": {
     "@capacitor/android": "^6.2.0",

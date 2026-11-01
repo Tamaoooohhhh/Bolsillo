@@ -70,8 +70,11 @@ bolsillo-apk/
   assets/                     Ícono (icon-only, icon-foreground, icon-background) y pantalla de carga (splash, splash-dark)
   capacitor.config.json       Nombre y id de la app
   package.json                Dependencias y scripts
+  scripts/patch-android.js    Firma fija y versionCode automático
   .github/workflows/
     build-apk.yml             Compilación automática del APK en GitHub
+  keystore/debug.keystore     Llave de firma fija (necesaria para actualizar sin desinstalar)
+  scripts/patch-signing.js    Aplica la firma fija y sube el versionCode
   .gitignore
 ```
 
@@ -110,6 +113,32 @@ Al hacer push a `main` se ejecuta el flujo "Build APK". Cuando termina, descarga
 ### Después de cambiar la app
 
 Edita `www/index.html`, corre `npm run sync` y vuelve a compilar.
+
+## Actualizar la app sin desinstalar
+
+Android solo deja actualizar una app si el APK nuevo está firmado con la misma llave que el instalado. Por eso el proyecto incluye `keystore/debug.keystore`, una llave fija que usan todas las compilaciones, tanto las de GitHub Actions como las locales. El script `scripts/patch-signing.js` la aplica en `android/app/build.gradle` y además sube el `versionCode` en cada compilación.
+
+- `npm run setup` y `npm run sync` ya ejecutan el script solo. En GitHub Actions corre como un paso del flujo.
+- No borres ni cambies `keystore/debug.keystore`. Si lo haces, la siguiente instalación vuelve a exigir desinstalar.
+- Es una llave de depuración pensada para uso personal. No sirve para publicar en Play Store.
+- La primera vez que cambias a esta llave hay que desinstalar la versión anterior una sola vez. Haz antes una copia de seguridad desde Configuración.
+
+## Actualizar la app sin desinstalar
+
+Android solo deja instalar una actualización encima si el APK nuevo está firmado con la misma llave que el instalado, y si su versionCode es mayor. Los APK de depuración se firman con una llave que se crea sola en cada computador (y en cada ejecución de GitHub), por eso aparece el conflicto de paquete. Este proyecto lo resuelve con una llave propia, `bolsillo.keystore`, y con un versionCode que sube solo en cada compilación (`scripts/patch-android.js`, que corre dentro de `npm run setup` y del workflow).
+
+Se hace una sola vez:
+
+1. Crea la llave: `npm run llave`. Genera `bolsillo.keystore` en la raíz del proyecto (alias `bolsillo`, contraseña `bolsillo123`). Si `keytool` no se reconoce, usa el de Android Studio: `C:\Program Files\Android\Android Studio\jbr\bin\keytool.exe` en Windows. Guarda una copia en un lugar seguro: si la pierdes, tendrás que desinstalar otra vez. Está en `.gitignore`, no se sube al repositorio.
+2. En tu computador: borra la carpeta `android`, corre `npm run setup` y compila como siempre.
+3. En GitHub: convierte la llave a base64 y guárdala como secret.
+   - Windows (PowerShell): `[Convert]::ToBase64String([IO.File]::ReadAllBytes("bolsillo.keystore")) | Set-Clipboard`
+   - Mac: `base64 -i bolsillo.keystore | pbcopy`
+   - Linux: `base64 -w0 bolsillo.keystore`
+   - En el repositorio: Settings > Secrets and variables > Actions > New repository secret, con el nombre `KEYSTORE_BASE64` y ese texto como valor.
+4. La primera vez con la llave nueva hay que desinstalar la app vieja (haz antes una copia desde Configuración) e instalar el APK nuevo. Desde ahí, cada APK se instala encima y conserva tus datos.
+
+Usa siempre esta misma llave, tanto en GitHub como en tu computador. Si mezclas APK firmados con otra llave, vuelve el conflicto.
 
 ## Personalizar
 
